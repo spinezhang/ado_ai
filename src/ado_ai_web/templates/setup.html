@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - ADO AI{% endblock %}
+
+{% set hide_nav = true %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl w-full space-y-8" x-data="setupWizard()">
+        <!-- Header -->
+        <div class="text-center">
+            <h1 class="text-4xl font-bold text-gray-900">🤖 ADO AI Setup</h1>
+            <p class="mt-2 text-sm text-gray-600">
+                Welcome! Let's get you set up to start using AI-powered work item completion.
+            </p>
+        </div>
+
+        <!-- Setup Form -->
+        <div class="bg-white shadow-xl rounded-lg p-8">
+            <form @submit.prevent="submitSetup">
+                <!-- Azure DevOps Section -->
+                <div class="space-y-6">
+                    <h2 class="text-xl font-semibold text-gray-900 border-b pb-2">Azure DevOps Configuration</h2>
+
+                    <div>
+                        <label for="org_url" class="block text-sm font-medium text-gray-700">Organization URL</label>
+                        <input
+                            type="url"
+                            id="org_url"
+                            x-model="form.azure_devops_org_url"
+                            required
+                            placeholder="https://dev.azure.com/your-org"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-4 py-2 border"
+                        >
+                        <p class="mt-1 text-xs text-gray-500">Your Azure DevOps organization URL</p>
+                    </div>
+
+                    <div>
+                        <label for="project" class="block text-sm font-medium text-gray-700">Project Name</label>
+                        <input
+                            type="text"
+                            id="project"
+                            x-model="form.azure_devops_project"
+                            required
+                            placeholder="MyProject"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-4 py-2 border"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="pat" class="block text-sm font-medium text-gray-700">Personal Access Token (PAT)</label>
+                        <input
+                            type="password"
+                            id="pat"
+                            x-model="form.azure_devops_pat"
+                            required
+                            placeholder="Enter your Azure DevOps PAT"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-4 py-2 border font-mono"
+                        >
+                        <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                            <p class="text-xs font-medium text-blue-900 mb-2">💡 How to generate a PAT:</p>
+                            <ol class="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                                <li>Go to <a href="https://dev.azure.com" target="_blank" class="font-medium underline">dev.azure.com</a> → Your Organization</li>
+                                <li>Click your profile icon → <strong>Personal access tokens</strong></li>
+                                <li>Click <strong>+ New Token</strong></li>
+                                <li>Set <strong>Scopes</strong>: Work Items (Read & Write), Project and Team (Read)</li>
+                                <li>Click <strong>Create</strong> and copy the token immediately</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button
+                            type="button"
+                            @click="testConnection('azure_devops')"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            Test Azure DevOps Connection
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Anthropic API Section -->
+                <div class="mt-8 space-y-6">
+                    <h2 class="text-xl font-semibold text-gray-900 border-b pb-2">Anthropic API Configuration</h2>
+
+                    <div>
+                        <label for="api_key" class="block text-sm font-medium text-gray-700">
+                            Anthropic API Key <span class="text-gray-500 font-normal">(Optional)</span>
+                        </label>
+                        <input
+                            type="password"
+                            id="api_key"
+                            x-model="form.anthropic_api_key"
+                            placeholder="Enter your Anthropic API key (optional if configured in system config)"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-4 py-2 border font-mono"
+                        >
+                        <p class="mt-2 text-xs text-gray-500">
+                            Get your API key at:
+                            <a href="https://console.anthropic.com" target="_blank" class="text-indigo-600 hover:underline">console.anthropic.com</a>
+                        </p>
+                    </div>
+
+                    <div>
+                        <button
+                            type="button"
+                            @click="testConnection('anthropic')"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            Test Anthropic API Key
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Messages -->
+                <div x-show="error" class="mt-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md" x-cloak>
+                    <p class="text-sm" x-text="error"></p>
+                </div>
+
+                <div x-show="success" class="mt-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md" x-cloak>
+                    <p class="text-sm">✓ Setup completed successfully! Redirecting...</p>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="mt-8">
+                    <button
+                        type="submit"
+                        :disabled="loading"
+                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <span x-show="!loading">Complete Setup</span>
+                        <span x-show="loading" x-cloak>
+                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function setupWizard() {
+    return {
+        form: {
+            username: 'default',
+            email: '',
+            azure_devops_org_url: '',
+            azure_devops_project: '',
+            azure_devops_pat: '',
+            anthropic_api_key: '',
+            work_folder_path: null,
+            claude_model: 'claude-opus-4-6',
+            auto_approve: false,
+            max_tokens: 4096,
+            temperature: 0.7
+        },
+        loading: false,
+        error: null,
+        success: false,
+
+        async submitSetup() {
+            this.loading = true;
+            this.error = null;
+            this.success = false;
+
+            try {
+                // Prepare form data - convert empty strings to null for optional fields
+                const formData = {
+                    ...this.form,
+                    anthropic_api_key: this.form.anthropic_api_key || null
+                };
+
+                const response = await fetch('/api/setup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Setup failed');
+                }
+
+                this.success = true;
+                console.log('Setup successful:', data);
+
+                // Redirect to dashboard after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 2000);
+
+            } catch (err) {
+                this.error = err.message || 'Setup failed. Please check your credentials and try again.';
+                console.error('Setup error:', err);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async testConnection(service) {
+            try {
+                const requestBody = {
+                    service: service
+                };
+
+                // Include credentials for testing
+                if (service === 'azure_devops') {
+                    if (!this.form.azure_devops_org_url || !this.form.azure_devops_pat) {
+                        alert('Please fill in Azure DevOps credentials first');
+                        return;
+                    }
+                    requestBody.azure_devops_org_url = this.form.azure_devops_org_url;
+                    requestBody.azure_devops_project = this.form.azure_devops_project;
+                    requestBody.azure_devops_pat = this.form.azure_devops_pat;
+                } else if (service === 'anthropic') {
+                    if (!this.form.anthropic_api_key) {
+                        alert('Please fill in Anthropic API key first');
+                        return;
+                    }
+                    requestBody.anthropic_api_key = this.form.anthropic_api_key;
+                }
+
+                const response = await fetch('/api/test-connection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✓ ${data.message}`);
+                } else {
+                    alert(`✗ ${data.message}`);
+                }
+
+            } catch (err) {
+                alert(`Connection test failed: ${err.message}`);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

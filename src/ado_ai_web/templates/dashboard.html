@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ADO AI{% endblock %}
+
+{% block header %}
+<header class="bg-white shadow">
+    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <!-- Quick Actions -->
+    <div class="mb-8">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <a href="/work-items/new" class="relative block rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span class="mt-2 block text-sm font-medium text-gray-900">New Analysis</span>
+            </a>
+
+            <a href="#history" class="relative block rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="mt-2 block text-sm font-medium text-gray-900">History Work Items</span>
+            </a>
+
+            <a href="/config" class="relative block rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span class="mt-2 block text-sm font-medium text-gray-900">Settings</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Work Items -->
+    <div id="history" x-data="workItemsHistory()" x-init="loadHistory()">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Recent Work Items</h2>
+
+        <!-- Loading State -->
+        <div x-show="loading" class="bg-white shadow overflow-hidden sm:rounded-md">
+            <div class="px-4 py-5 sm:p-6 text-center text-gray-500">
+                <svg class="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="mt-2">Loading history...</p>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="!loading && items.length === 0" class="bg-white shadow overflow-hidden sm:rounded-md" x-cloak>
+            <div class="px-4 py-5 sm:p-6 text-center text-gray-500">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="mt-2">No work items analyzed yet</p>
+                <p class="mt-1 text-sm">Start by creating a new analysis</p>
+            </div>
+        </div>
+
+        <!-- History List -->
+        <div x-show="!loading && items.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md" x-cloak>
+            <ul class="divide-y divide-gray-200">
+                <template x-for="item in items" :key="item.id">
+                    <li>
+                        <a :href="`/work-items/history/${item.id}`" class="block hover:bg-gray-50">
+                            <div class="px-4 py-4 sm:px-6">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <p class="text-sm font-medium text-indigo-600 truncate">
+                                            #<span x-text="item.work_item_id"></span>
+                                            <span x-text="item.title" class="ml-2 text-gray-900"></span>
+                                        </p>
+                                    </div>
+                                    <div class="ml-2 flex-shrink-0 flex">
+                                        <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                           :class="{
+                                               'bg-green-100 text-green-800': item.status === 'completed',
+                                               'bg-yellow-100 text-yellow-800': item.status === 'analyzing',
+                                               'bg-red-100 text-red-800': item.status === 'failed'
+                                           }"
+                                           x-text="item.status"></p>
+                                    </div>
+                                </div>
+                                <div class="mt-2 sm:flex sm:justify-between">
+                                    <div class="sm:flex">
+                                        <p class="flex items-center text-sm text-gray-500">
+                                            <span x-text="item.work_item_type"></span>
+                                        </p>
+                                    </div>
+                                    <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                        <span x-show="item.cost">💰 $<span x-text="item.cost?.toFixed(4)"></span> • </span>
+                                        <span x-text="new Date(item.created_at).toLocaleString()"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+function workItemsHistory() {
+    return {
+        items: [],
+        loading: true,
+
+        async loadHistory() {
+            this.loading = true;
+            try {
+                const response = await fetch('/api/work-items/?limit=20');
+                const data = await response.json();
+
+                if (response.ok) {
+                    this.items = data;
+                    console.log('Loaded history:', data);
+                } else {
+                    console.error('Failed to load history:', data);
+                }
+            } catch (err) {
+                console.error('Error loading history:', err);
+            } finally {
+                this.loading = false;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

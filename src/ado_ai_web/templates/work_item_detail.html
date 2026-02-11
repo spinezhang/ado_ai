@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Analyze Work Item - ADO AI{% endblock %}
+
+{% block header %}
+<header class="bg-white shadow">
+    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-bold tracking-tight text-gray-900">Analyze Work Item</h1>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0" x-data="workItemAnalyzer()">
+    <!-- Input Form -->
+    <div class="bg-white shadow sm:rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Work Item Details</h2>
+
+        <form @submit.prevent="fetchWorkItem" class="space-y-4">
+            <div>
+                <label for="work_item_id" class="block text-sm font-medium text-gray-700">Work Item ID</label>
+                <input
+                    type="number"
+                    id="work_item_id"
+                    x-model="workItemId"
+                    required
+                    min="1"
+                    placeholder="Enter work item ID"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-4 py-2 border"
+                >
+            </div>
+
+            <div>
+                <label for="custom_prompt" class="block text-sm font-medium text-gray-700">
+                    Custom Prompt (Optional)
+                </label>
+                <textarea
+                    id="custom_prompt"
+                    x-model="customPrompt"
+                    rows="3"
+                    placeholder="Additional instructions for AI (e.g., 'Focus on security implications')"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-4 py-2 border"
+                ></textarea>
+                <p class="mt-1 text-xs text-gray-500">Optional: Provide specific guidance for the AI analysis</p>
+            </div>
+
+            <div>
+                <label for="work_folder" class="block text-sm font-medium text-gray-700">
+                    Work Folder (Optional)
+                </label>
+                <div class="mt-1 flex gap-2">
+                    <input
+                        type="text"
+                        id="work_folder"
+                        x-model="workFolder"
+                        placeholder="/path/to/workspace"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-4 py-2 border"
+                    >
+                    <button
+                        type="button"
+                        @click="openFileBrowser()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap"
+                    >
+                        📁 Browse
+                    </button>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Optional: Specify workspace folder for file operations</p>
+            </div>
+
+            <div class="flex gap-3">
+                <button
+                    type="submit"
+                    :disabled="loading"
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                >
+                    <span x-show="!loading">Fetch Work Item</span>
+                    <span x-show="loading" x-cloak>Loading...</span>
+                </button>
+
+                <button
+                    type="button"
+                    @click="analyzeWorkItem"
+                    x-show="workItem !== null && !analyzing"
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    x-cloak
+                >
+                    🤖 Analyze with AI
+                </button>
+            </div>
+
+            <!-- Error Display -->
+            <div x-show="error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md" x-cloak>
+                <p class="text-sm" x-text="error"></p>
+            </div>
+        </form>
+    </div>
+
+    <!-- Work Item Display -->
+    <div x-show="workItem !== null" class="bg-white shadow sm:rounded-lg p-6 mb-6" x-cloak>
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Work Item Information</h2>
+
+        <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+            <div>
+                <dt class="text-sm font-medium text-gray-500">ID</dt>
+                <dd class="mt-1 text-sm text-gray-900" x-text="workItem?.work_item_id"></dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Type</dt>
+                <dd class="mt-1 text-sm text-gray-900" x-text="workItem?.work_item_type"></dd>
+            </div>
+            <div class="sm:col-span-2">
+                <dt class="text-sm font-medium text-gray-500">Title</dt>
+                <dd class="mt-1 text-sm text-gray-900 font-semibold" x-text="workItem?.title"></dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">State</dt>
+                <dd class="mt-1">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800" x-text="workItem?.state"></span>
+                </dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Assigned To</dt>
+                <dd class="mt-1 text-sm text-gray-900" x-text="workItem?.assigned_to || 'Unassigned'"></dd>
+            </div>
+            <div x-show="workItem?.priority">
+                <dt class="text-sm font-medium text-gray-500">Priority</dt>
+                <dd class="mt-1 text-sm text-gray-900" x-text="workItem?.priority"></dd>
+            </div>
+            <div x-show="workItem?.remaining_work">
+                <dt class="text-sm font-medium text-gray-500">Remaining Work</dt>
+                <dd class="mt-1 text-sm text-gray-900"><span x-text="workItem?.remaining_work"></span> hours</dd>
+            </div>
+            <div x-show="workItem?.description" class="sm:col-span-2">
+                <dt class="text-sm font-medium text-gray-500">Description</dt>
+                <dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap" x-text="workItem?.description?.substring(0, 500)"></dd>
+            </div>
+        </dl>
+
+        <!-- Comments Section -->
+        <div x-show="workItem?.comments && workItem.comments.length > 0" class="mt-6">
+            <h3 class="text-sm font-medium text-gray-900 mb-3">💬 Recent Comments</h3>
+            <div class="space-y-3">
+                <template x-for="comment in workItem?.comments" :key="comment.id">
+                    <div class="bg-gray-50 rounded-md p-3 border border-gray-200">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-xs font-medium text-gray-700" x-text="comment.created_by"></span>
+                            <span class="text-xs text-gray-500" x-text="new Date(comment.created_date).toLocaleString()"></span>
+                        </div>
+                        <p class="text-sm text-gray-800 whitespace-pre-wrap" x-text="stripHtml(comment.text)"></p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Progress -->
+    <div x-show="analyzing" class="bg-white shadow sm:rounded-lg p-6 mb-6" x-cloak>
+        <h2 class="text-lg font-medium text-gray-900 mb-4">🤖 AI Analysis in Progress</h2>
+        <div class="flex items-center space-x-4">
+            <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div>
+                <p class="text-sm font-medium text-gray-900">Analyzing work item with Claude AI...</p>
+                <p class="text-xs text-gray-500">This may take 10-30 seconds</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div x-show="analysis !== null" class="bg-white shadow sm:rounded-lg p-6" x-cloak>
+        <h2 class="text-lg font-medium text-gray-900 mb-4">✨ AI Analysis Results</h2>
+
+        <div class="space-y-6">
+            <!-- Analysis -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-2">Analysis</h3>
+                <p class="text-sm text-gray-700" x-text="analysis?.analysis"></p>
+            </div>
+
+            <!-- Solution -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-900 mb-2">Solution</h3>
+                <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="analysis?.solution"></p>
+            </div>
+
+            <!-- Tasks -->
+            <div x-show="analysis?.tasks && analysis.tasks.length > 0">
+                <h3 class="text-sm font-semibold text-gray-900 mb-2">Tasks</h3>
+                <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                    <template x-for="(task, index) in analysis?.tasks" :key="index">
+                        <li x-text="task"></li>
+                    </template>
+                </ul>
+            </div>
+
+            <!-- Risks -->
+            <div x-show="analysis?.risks && analysis.risks.length > 0" class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                <h3 class="text-sm font-semibold text-yellow-900 mb-2">⚠️ Risks & Considerations</h3>
+                <ul class="list-disc list-inside text-sm text-yellow-800 space-y-1">
+                    <template x-for="(risk, index) in analysis?.risks" :key="index">
+                        <li x-text="risk"></li>
+                    </template>
+                </ul>
+            </div>
+
+            <!-- Proposed Changes -->
+            <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <h3 class="text-sm font-semibold text-blue-900 mb-2">💡 Proposed Changes</h3>
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li x-show="analysis?.suggested_status">
+                        <strong>Status:</strong> <span x-text="workItem?.state"></span> → <span class="font-semibold" x-text="analysis?.suggested_status"></span>
+                    </li>
+                    <li x-show="analysis?.suggested_remaining_work">
+                        <strong>Remaining Work:</strong> <span x-text="workItem?.remaining_work"></span> → <span class="font-semibold" x-text="analysis?.suggested_remaining_work"></span> hours
+                    </li>
+                    <li><strong>Action:</strong> Add AI-generated comment</li>
+                </ul>
+            </div>
+
+            <!-- Cost -->
+            <div x-show="analysisCost" class="text-sm text-gray-600">
+                <strong>💰 Cost:</strong> $<span x-text="analysisCost?.toFixed(4)"></span>
+                (<span x-text="analysisTokens?.input_tokens?.toLocaleString()"></span> input,
+                <span x-text="analysisTokens?.output_tokens?.toLocaleString()"></span> output tokens)
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3 pt-4 border-t">
+                <button
+                    @click="alert('Apply changes functionality coming soon!')"
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                >
+                    ✓ Apply Changes
+                </button>
+                <button
+                    @click="reset()"
+                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                    Start New Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Browser Modal -->
+    <div x-show="showBrowser" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50" x-cloak>
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Select Work Folder</h3>
+            </div>
+
+            <div class="px-6 py-4 flex-1 overflow-y-auto">
+                <!-- Current Path -->
+                <div class="mb-4 p-3 bg-gray-50 rounded-md">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600 font-mono" x-text="browserPath"></span>
+                        <button
+                            type="button"
+                            @click="navigateToParent()"
+                            :disabled="!browserParentPath"
+                            class="text-sm text-indigo-600 hover:text-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            ⬆️ Up
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Directory List -->
+                <div x-show="browserLoading" class="text-center py-8">
+                    <svg class="animate-spin h-8 w-8 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+
+                <div x-show="!browserLoading" class="space-y-1">
+                    <template x-for="entry in browserEntries" :key="entry.path">
+                        <div
+                            x-show="entry.is_directory"
+                            @click="browseDirectory(entry.path)"
+                            class="flex items-center gap-2 p-3 hover:bg-gray-50 rounded-md cursor-pointer border border-transparent hover:border-gray-200"
+                        >
+                            <span class="text-lg">📁</span>
+                            <span class="text-sm text-gray-900" x-text="entry.name"></span>
+                        </div>
+                    </template>
+                </div>
+
+                <div x-show="!browserLoading && browserEntries.length === 0" class="text-center py-8 text-gray-500">
+                    <p class="text-sm">No subdirectories found</p>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
+                <button
+                    type="button"
+                    @click="selectDirectory()"
+                    class="flex-1 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                    Select This Folder
+                </button>
+                <button
+                    type="button"
+                    @click="showBrowser = false"
+                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function workItemAnalyzer() {
+    return {
+        workItemId: '',
+        customPrompt: '',
+        workFolder: '',
+        loading: false,
+        analyzing: false,
+        error: null,
+        workItem: null,
+        analysis: null,
+        analysisCost: null,
+        analysisTokens: null,
+
+        // File browser state
+        showBrowser: false,
+        browserPath: '',
+        browserEntries: [],
+        browserParentPath: null,
+        browserLoading: false,
+
+        async fetchWorkItem() {
+            if (!this.workItemId) {
+                this.error = 'Please enter a work item ID';
+                return;
+            }
+
+            this.loading = true;
+            this.error = null;
+            this.workItem = null;
+            this.analysis = null;
+
+            try {
+                const response = await fetch(`/api/work-items/${this.workItemId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to fetch work item');
+                }
+
+                this.workItem = data;
+                console.log('Work item fetched:', data);
+
+            } catch (err) {
+                this.error = err.message;
+                console.error('Fetch error:', err);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async analyzeWorkItem() {
+            if (!this.workItem) {
+                this.error = 'Please fetch a work item first';
+                return;
+            }
+
+            this.analyzing = true;
+            this.error = null;
+            this.analysis = null;
+
+            try {
+                const response = await fetch(`/api/work-items/${this.workItemId}/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        work_item_id: parseInt(this.workItemId),
+                        custom_prompt: this.customPrompt || null,
+                        work_folder_path: this.workFolder || null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Analysis failed');
+                }
+
+                // Display results
+                if (data.analysis) {
+                    this.analysis = data.analysis;
+                    this.analysisCost = data.cost;
+                    this.analysisTokens = data.token_usage;
+                    console.log('Analysis complete:', data);
+                } else {
+                    throw new Error('No analysis results returned');
+                }
+
+            } catch (err) {
+                this.error = err.message;
+                console.error('Analysis error:', err);
+            } finally {
+                this.analyzing = false;
+            }
+        },
+
+        reset() {
+            this.workItemId = '';
+            this.customPrompt = '';
+            this.workFolder = '';
+            this.workItem = null;
+            this.analysis = null;
+            this.analysisCost = null;
+            this.analysisTokens = null;
+            this.error = null;
+        },
+
+        // File Browser Methods
+        openFileBrowser() {
+            this.showBrowser = true;
+            // Use a small timeout to ensure the modal is rendered before making the API call
+            setTimeout(() => {
+                const homeDir = this.workFolder || '';
+                this.browseDirectory(homeDir || null);
+            }, 50);
+        },
+
+        async browseDirectory(path = null) {
+            this.browserLoading = true;
+            try {
+                const url = path
+                    ? `/api/files/browse?path=${encodeURIComponent(path)}`
+                    : '/api/files/browse';
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to browse directory');
+                }
+
+                this.browserPath = data.current_path;
+                this.browserEntries = data.entries || [];
+                this.browserParentPath = data.parent_path;
+            } catch (err) {
+                alert(`Failed to browse directory: ${err.message}`);
+                console.error('Browse error:', err);
+            } finally {
+                this.browserLoading = false;
+            }
+        },
+
+        selectDirectory() {
+            this.workFolder = this.browserPath;
+            this.showBrowser = false;
+        },
+
+        navigateToParent() {
+            if (this.browserParentPath) {
+                this.browseDirectory(this.browserParentPath);
+            }
+        },
+
+        // Helper method to strip HTML tags from text
+        stripHtml(html) {
+            if (!html) return '';
+            const tmp = document.createElement('DIV');
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || '';
+        }
+    }
+}
+</script>
+{% endblock %}

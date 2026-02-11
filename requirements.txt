@@ -1,0 +1,12 @@
+# Core dependencies
+typer[all]>=0.12.0
+rich>=13.7.0
+azure-devops>=7.1.0b4
+anthropic>=0.34.0
+python-dotenv>=1.0.0
+pydantic>=2.8.0
+pydantic-settings>=2.4.0
+tenacity>=9.0.0
+
+# Development dependencies (optional)
+# Install with: pip install -r requirements.txt -r requirements-dev.txt

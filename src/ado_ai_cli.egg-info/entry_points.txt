@@ -1,0 +1,2 @@
+[console_scripts]
+ado-ai = ado_ai_cli.cli:app

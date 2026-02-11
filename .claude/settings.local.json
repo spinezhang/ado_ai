@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(alembic init src/ado_ai_web/database/migrations)",
+      "Bash(alembic revision --autogenerate -m \"Initial migration\")",
+      "Bash(alembic upgrade head)",
+      "Bash(python:*)",
+      "Bash(/Users/spine/work/ai/azure_devops/.env.example << 'EOF'\n# Environment variables for ADO AI Web Service\n# Copy this file to .env and fill in your values\n\n# Encryption master key for credential storage \\(generate with: python -c \"from cryptography.fernet import Fernet; print\\(Fernet.generate_key\\(\\).decode\\(\\)\\)\"\\)\n# If not set, a temporary key will be generated automatically \\(not recommended for production\\)\nENCRYPTION_MASTER_KEY=your-base64-encoded-32-byte-key-here\n\n# Database URL \\(defaults to SQLite in current directory\\)\nDATABASE_URL=sqlite:///./ado_ai.db\n\n# Optional: Anthropic API key \\(can also be set in server_config.json or provided during setup\\)\n# ANTHROPIC_API_KEY=your-api-key-here\n\n# Optional: Default work folder path\n# DEFAULT_WORK_FOLDER=/path/to/workspace\n\n# Server configuration \\(optional\\)\n# HOST=0.0.0.0\n# PORT=8000\nEOF)",
+      "Bash(/Users/spine/work/ai/azure_devops/server_config.json << 'EOF'\n{\n  \"anthropic_api_key\": \"your-anthropic-api-key-here\"\n}\nEOF)"
+    ]
+  }
+}
