@@ -128,10 +128,45 @@ async def settings_page(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "ado_ai_web.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    import os
+
+    # SSL configuration
+    ssl_keyfile = os.environ.get("SSL_KEYFILE", str(BASE_DIR.parent.parent / "certs" / "key.pem"))
+    ssl_certfile = os.environ.get("SSL_CERTFILE", str(BASE_DIR.parent.parent / "certs" / "cert.pem"))
+
+    # Check if SSL certificates exist
+    ssl_keyfile_path = Path(ssl_keyfile)
+    ssl_certfile_path = Path(ssl_certfile)
+
+    use_ssl = ssl_keyfile_path.exists() and ssl_certfile_path.exists()
+
+    if use_ssl:
+        print("✓ Starting HTTPS server with SSL certificates")
+        print(f"  Certificate: {ssl_certfile_path}")
+        print(f"  Private key: {ssl_keyfile_path}")
+        print("\n🚀 Server will be available at: https://localhost:8000")
+        print("   (You may see a browser warning for self-signed certificate)")
+
+        uvicorn.run(
+            "ado_ai_web.main:app",
+            host="0.0.0.0",
+            port=8000,
+            reload=True,
+            log_level="info",
+            ssl_keyfile=str(ssl_keyfile_path),
+            ssl_certfile=str(ssl_certfile_path)
+        )
+    else:
+        print("⚠️  SSL certificates not found. Starting HTTP server (insecure).")
+        print(f"   Expected certificate at: {ssl_certfile_path}")
+        print(f"   Expected private key at: {ssl_keyfile_path}")
+        print("\n   To enable HTTPS, run: python scripts/generate_cert.py")
+        print("\n🚀 Server will be available at: http://localhost:8000")
+
+        uvicorn.run(
+            "ado_ai_web.main:app",
+            host="0.0.0.0",
+            port=8000,
+            reload=True,
+            log_level="info"
+        )

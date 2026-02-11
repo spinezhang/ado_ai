@@ -89,11 +89,38 @@ python -m ado_ai_web.main
 uvicorn ado_ai_web.main:app --host 0.0.0.0 --port 8000
 ```
 
-The service will be available at `http://localhost:8000`
+The service will be available at:
+- **HTTPS**: `https://localhost:8000` (if SSL certificates are configured)
+- **HTTP**: `http://localhost:8000` (fallback if no SSL certificates)
+
+### HTTPS Setup (Recommended)
+
+For secure communication, the web service supports HTTPS with self-signed certificates:
+
+```bash
+# Generate self-signed SSL certificate
+python scripts/generate_cert.py
+
+# The script will create:
+#   - certs/cert.pem  (SSL certificate)
+#   - certs/key.pem   (Private key)
+
+# Start the server - it will automatically use HTTPS if certificates exist
+python -m ado_ai_web.main
+```
+
+**Browser Security Warning**: Self-signed certificates will trigger a browser warning. This is expected and safe for local development. Click "Advanced" → "Proceed to localhost" to continue.
+
+**Custom Certificates**: You can use your own SSL certificates by setting environment variables:
+```bash
+export SSL_CERTFILE=/path/to/your/cert.pem
+export SSL_KEYFILE=/path/to/your/key.pem
+python -m ado_ai_web.main
+```
 
 ### First-Time Setup
 
-1. Navigate to `http://localhost:8000`
+1. Navigate to `https://localhost:8000` (or `http://localhost:8000` without SSL)
 2. You'll be redirected to the setup wizard
 3. Enter your Azure DevOps credentials:
    - Organization URL (e.g., `https://dev.azure.com/YourOrg`)
@@ -132,8 +159,8 @@ The service will be available at `http://localhost:8000`
 ### API Documentation
 
 Interactive API documentation is available at:
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
+- **Swagger UI**: `https://localhost:8000/docs` (or `http://localhost:8000/docs`)
+- **ReDoc**: `https://localhost:8000/redoc` (or `http://localhost:8000/redoc`)
 
 #### API Endpoints
 
@@ -175,10 +202,16 @@ docker run -p 8000:8000 \
 # Required
 ENCRYPTION_MASTER_KEY=your-base64-encoded-32-byte-key
 
-# Optional
+# Optional - Database
 DATABASE_URL=sqlite:///./ado_ai.db
+
+# Optional - Security
 SESSION_SECRET_KEY=your-session-secret
 CSRF_SECRET_KEY=your-csrf-secret
+
+# Optional - SSL/HTTPS
+SSL_CERTFILE=./certs/cert.pem    # Path to SSL certificate
+SSL_KEYFILE=./certs/key.pem      # Path to SSL private key
 ```
 
 ---
@@ -392,6 +425,13 @@ azure_devops/
 ├── alembic.ini                  # Database migration config
 ├── ado_ai.db                    # SQLite database (auto-created)
 │
+├── scripts/                     # Utility scripts
+│   └── generate_cert.py         # SSL certificate generator
+│
+├── certs/                       # SSL certificates (git-ignored)
+│   ├── cert.pem                 # SSL certificate (auto-generated)
+│   └── key.pem                  # Private key (auto-generated)
+│
 └── src/
     ├── ado_ai_cli/              # CLI Package
     │   ├── __init__.py
@@ -455,15 +495,16 @@ azure_devops/
 
 ## Security Best Practices
 
-- ✅ Credentials encrypted at rest with AES-256
-- ✅ Master encryption key stored in environment variable
-- ✅ Never commit `.env` or database files to version control
-- ✅ Use minimal PAT permissions (principle of least privilege)
-- ✅ Set PAT expiration dates
-- ✅ Rotate credentials regularly
-- ✅ HTTPS recommended for production deployments
-- ✅ CSRF protection ready for production
-- ✅ Comprehensive audit logging
+- ✅ **HTTPS enabled by default** - Self-signed certificates for secure communication
+- ✅ **Credentials encrypted at rest** with AES-256 (Fernet)
+- ✅ **Master encryption key** stored in environment variable
+- ✅ **Never commit** `.env`, database, or SSL certificates to version control
+- ✅ **Use minimal PAT permissions** (principle of least privilege)
+- ✅ **Set PAT expiration dates** and rotate regularly
+- ✅ **CSRF protection** ready for production
+- ✅ **Comprehensive audit logging** of all operations
+- ✅ **Path traversal protection** for file operations
+- ✅ **Secure session management** with encrypted cookies
 
 ---
 

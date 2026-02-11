@@ -15,4 +15,10 @@ __pycache__/
 ado-ai.log
 .env
 server_config.json
+ado_ai.db
+ado_ai.db-shm
+ado_ai.db-wal
+
+# SSL certificates (self-signed)
+certs/
 
